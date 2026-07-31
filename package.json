@@ -1,0 +1,11 @@
+{
+  "name": "ai-readiness-checker",
+  "version": "1.0.0",
+  "description": "Deterministic AI-readiness scoring for web pages. Cloudflare Worker + embeddable widget.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "license": "MIT"
+}

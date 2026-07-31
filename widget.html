@@ -1,0 +1,322 @@
+<!-- ===================================================================
+     AI Readiness Checker — front end
+     Yes Digital Works
+
+     Paste this whole block into an HTML element on your IONOS page.
+     ENDPOINT is already set to your Cloudflare Worker. Paste this whole block
+     No external dependencies, no libraries, nothing to install.
+     =================================================================== -->
+
+<div class="ydw-air">
+  <h2 class="ydw-air__title">AI Readiness Checker</h2>
+  <p class="ydw-air__lede">
+    Enter a page and we'll fetch it, read it the way an AI crawler does, and score
+    what we find. You'll see every check and what it's worth.
+  </p>
+
+  <div class="ydw-air__form">
+    <label class="ydw-air__label" for="ydwAirUrl">Page to check</label>
+    <input id="ydwAirUrl" class="ydw-air__input" type="url" inputmode="url"
+           placeholder="yourwebsite.com" autocomplete="url" spellcheck="false">
+    <button id="ydwAirGo" class="ydw-air__btn" type="button">Check this page</button>
+  </div>
+
+  <div id="ydwAirOut" class="ydw-air__out" aria-live="polite"></div>
+</div>
+
+<style>
+.ydw-air {
+  --ink: #FFFFFF;
+  --bg: #0A0A0A;
+  --gold: #D4AF37;
+  --gold-lo: rgba(212,175,55,.16);
+  --muted: #9A9A97;
+  --line: rgba(255,255,255,.10);
+  --pass: #57C08A;
+  --part: #E0A33C;
+  --fail: #D9645C;
+
+  box-sizing: border-box;
+  max-width: 720px;
+  height: 700px;               /* fixed — IONOS embeds cannot auto-grow */
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  padding: 30px 30px 24px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  overflow: hidden;            /* nothing escapes into the next section */
+}
+.ydw-air *, .ydw-air *::before, .ydw-air *::after { box-sizing: inherit; }
+
+.ydw-air__title {
+  font-family: "Space Grotesk", Inter, "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(22px, 3.5vw, 28px);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--gold);
+  margin: 0 0 8px;
+  text-align: center;
+}
+.ydw-air__lede {
+  color: var(--muted);
+  margin: 0 auto 18px;      /* auto centres the capped block itself */
+  max-width: 52ch;
+  font-size: 15px;
+  text-align: center;
+}
+
+.ydw-air__label {
+  display: block;
+  font-size: 12px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 7px;
+  text-align: center;
+}
+.ydw-air__input {
+  width: 100%;
+  padding: 13px 15px;
+  font: inherit;
+  color: var(--ink);
+  background: #141414;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  margin-bottom: 12px;
+}
+.ydw-air__input::placeholder { color: #5E5E5B; }
+.ydw-air__input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.ydw-air__btn {
+  width: 100%;
+  padding: 14px;
+  font: inherit;
+  font-weight: 600;
+  color: #0A0A0A;
+  background: var(--gold);
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: opacity .15s ease;
+}
+.ydw-air__btn:hover { opacity: .88; }
+.ydw-air__btn:disabled { opacity: .45; cursor: default; }
+.ydw-air__btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.ydw-air__out:empty { display: none; }
+.ydw-air__out {
+  margin-top: 24px;
+  flex: 1 1 auto;              /* takes the remaining height */
+  overflow-y: auto;            /* long reports scroll in here */
+  overscroll-behavior: contain;
+  padding-right: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) rgba(255,255,255,.08);
+}
+.ydw-air__out::-webkit-scrollbar { width: 8px; }
+.ydw-air__out::-webkit-scrollbar-track { background: rgba(255,255,255,.06); border-radius: 4px; }
+.ydw-air__out::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 4px; }
+.ydw-air__form { flex: 0 0 auto; }
+
+.ydw-air__msg { padding: 14px 16px; border-radius: 7px; background: #1A1212; border: 1px solid rgba(217,100,92,.4); color: #F0B7B3; }
+.ydw-air__wait { color: var(--muted); font-size: 15px; }
+
+/* --- Score header --- */
+.ydw-air__head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.ydw-air__num { font-family: "Space Grotesk", Inter, sans-serif; font-size: 60px; font-weight: 600; line-height: 1; color: var(--gold); letter-spacing: -.03em; }
+.ydw-air__den { font-size: 17px; color: var(--muted); }
+.ydw-air__band { font-size: 15px; font-weight: 600; margin-left: auto; }
+.ydw-air__url { width: 100%; font-size: 13px; color: var(--muted); word-break: break-all; margin-top: 4px; }
+
+/* --- Category bars --- */
+.ydw-air__cat { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.ydw-air__catrow { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.ydw-air__catpts { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.ydw-air__bar { height: 5px; background: rgba(255,255,255,.07); border-radius: 3px; overflow: hidden; }
+.ydw-air__fill { height: 100%; background: var(--gold); border-radius: 3px; width: 0; transition: width .5s ease; }
+
+/* --- The ledger: every check, visible --- */
+.ydw-air__checks { list-style: none; margin: 12px 0 0; padding: 0; }
+.ydw-air__check { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; padding: 7px 0; font-size: 14.5px; align-items: start; }
+.ydw-air__dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 7px; }
+.ydw-air__dot--pass { background: var(--pass); }
+.ydw-air__dot--partial { background: var(--part); }
+.ydw-air__dot--fail { background: var(--fail); }
+.ydw-air__cklabel { font-weight: 500; }
+.ydw-air__ckdetail { display: block; color: var(--muted); font-size: 13.5px; font-weight: 400; margin-top: 1px; }
+.ydw-air__ckpts { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 2px; }
+
+/* --- Priorities --- */
+.ydw-air__fix { margin-top: 26px; padding: 20px; background: var(--gold-lo); border-left: 3px solid var(--gold); border-radius: 0 8px 8px 0; }
+.ydw-air__fixh { font-family: "Space Grotesk", Inter, sans-serif; font-size: 17px; font-weight: 600; margin: 0 0 12px; }
+.ydw-air__fixlist { margin: 0; padding-left: 20px; }
+.ydw-air__fixlist li { margin-bottom: 11px; font-size: 14.5px; }
+.ydw-air__fixlist li:last-child { margin-bottom: 0; }
+.ydw-air__fixlist strong { display: block; }
+.ydw-air__fixlist span { color: var(--muted); }
+
+/* --- Scope notes --- */
+.ydw-air__notes { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.ydw-air__notes p { margin: 0 0 7px; }
+.ydw-air__notes p:last-child { margin-bottom: 0; }
+
+/* --- Email capture --- */
+.ydw-air__email { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
+.ydw-air__ok { color: var(--pass); font-size: 15px; }
+
+@media (max-width: 520px) {
+  .ydw-air { padding: 22px 18px; border-radius: 0; height: 620px; }
+  .ydw-air__num { font-size: 44px; }
+  .ydw-air__band { margin-left: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ydw-air__fill { transition: none; }
+}
+</style>
+
+<script>
+(function () {
+  // ---- Your Cloudflare Worker URL. Get this after you deploy the Worker;
+  //      it looks like https://ai-check.YOURNAME.workers.dev ----------------
+  var ENDPOINT = 'https://ai-check.greg-72c.workers.dev';
+
+  // Email capture needs a sending service wired up first — see the README.
+  // Leave false to ship the checker now with a plain call-to-action instead.
+  var ENABLE_EMAIL = false;
+  var CTA_URL  = 'https://www.yesdigitalworks.com/contact';
+  var CTA_TEXT = 'Want these fixed? Book a walkthrough';
+  // -----------------------------------------------------------------------
+
+  var input = document.getElementById('ydwAirUrl');
+  var btn   = document.getElementById('ydwAirGo');
+  var out   = document.getElementById('ydwAirOut');
+  var last  = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function reset() {          // every run starts from a clean slate
+    out.innerHTML = '';
+    last = null;
+  }
+
+  function showError(msg) {
+    out.innerHTML = '<div class="ydw-air__msg">' + esc(msg) + '</div>';
+  }
+
+  function run() {
+    var url = input.value.trim();
+    reset();
+
+    if (!url || url.indexOf('.') === -1) {
+      showError('Enter a full web address, like example.com');
+      input.focus();
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Checking\u2026';
+    out.innerHTML = '<p class="ydw-air__wait">Fetching the page and reading it the way a crawler would. This takes a few seconds.</p>';
+
+    var body = new URLSearchParams();
+    body.set('url', url);
+
+    fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) { showError((d && d.error) || 'Something went wrong reading that page.'); return; }
+        last = d;
+        render(d);
+      })
+      .catch(function () {
+        showError('Could not reach the checker. Refresh and try again.');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Check this page';
+      });
+  }
+
+  function render(d) {
+    var html = '';
+
+    html += '<div class="ydw-air__head">'
+          +   '<span class="ydw-air__num">' + d.score + '</span>'
+          +   '<span class="ydw-air__den">/ ' + d.max + '</span>'
+          +   '<span class="ydw-air__band">' + esc(d.band) + '</span>'
+          +   '<span class="ydw-air__url">' + esc(d.final_url) + '</span>'
+          + '</div>';
+
+    d.categories.forEach(function (c) {
+      var pct = Math.round((c.score / c.max) * 100);
+      html += '<div class="ydw-air__cat">'
+            +   '<div class="ydw-air__catrow"><span>' + esc(c.name) + '</span>'
+            +   '<span class="ydw-air__catpts">' + c.score + ' / ' + c.max + '</span></div>'
+            +   '<div class="ydw-air__bar"><div class="ydw-air__fill" data-pct="' + pct + '"></div></div>'
+            +   '<ul class="ydw-air__checks">';
+
+      c.checks.forEach(function (ck) {
+        html += '<li class="ydw-air__check">'
+              +   '<span class="ydw-air__dot ydw-air__dot--' + esc(ck.status) + '"></span>'
+              +   '<span class="ydw-air__cklabel">' + esc(ck.label)
+              +     '<span class="ydw-air__ckdetail">' + esc(ck.detail) + '</span></span>'
+              +   '<span class="ydw-air__ckpts">' + ck.points + '/' + ck.max + '</span>'
+              + '</li>';
+      });
+
+      html += '</ul></div>';
+    });
+
+    if (d.priorities && d.priorities.length) {
+      html += '<div class="ydw-air__fix"><h3 class="ydw-air__fixh">Fix these first</h3><ol class="ydw-air__fixlist">';
+      d.priorities.forEach(function (p) {
+        html += '<li><strong>' + esc(p.title) + ' &mdash; ' + p.lost + ' points</strong>'
+              + '<span>' + esc(p.fix) + '</span></li>';
+      });
+      html += '</ol></div>';
+    }
+
+    html += '<div class="ydw-air__notes">';
+    (d.notes || []).forEach(function (n) { html += '<p>' + esc(n) + '</p>'; });
+    html += '</div>';
+
+    if (ENABLE_EMAIL) {
+      html += '<div class="ydw-air__email">'
+            +   '<label class="ydw-air__label" for="ydwAirEmail">Email me this report</label>'
+            +   '<input id="ydwAirEmail" class="ydw-air__input" type="email" placeholder="you@company.com" autocomplete="email">'
+            +   '<button id="ydwAirSend" class="ydw-air__btn" type="button">Send the report</button>'
+            + '</div>';
+    } else {
+      html += '<div class="ydw-air__email">'
+            +   '<a class="ydw-air__btn" style="display:block;text-align:center;text-decoration:none" href="'
+            +   esc(CTA_URL) + '">' + esc(CTA_TEXT) + '</a>'
+            + '</div>';
+    }
+
+    out.innerHTML = html;
+
+    // Animate the bars after paint.
+    requestAnimationFrame(function () {
+      out.querySelectorAll('.ydw-air__fill').forEach(function (el) {
+        el.style.width = el.getAttribute('data-pct') + '%';
+      });
+    });
+  }
+
+  btn.addEventListener('click', run);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') run(); });
+})();
+</script>
