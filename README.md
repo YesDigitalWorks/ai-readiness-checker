@@ -2,7 +2,7 @@
 
 Fetches a web page, reads it the way an AI crawler does, and scores how well it's set up to be parsed and cited. Twenty checks, every one shown to the user with its point value.
 
-**[Try it live](https://www.yesdigitalworks.com)** · Cloudflare Worker + embeddable widget · No dependencies
+**[Try it live](https://www.yesdigitalworks.com/digital-marketing-terms---concepts)** · Cloudflare Worker + embeddable widget · No dependencies
 
 ---
 
